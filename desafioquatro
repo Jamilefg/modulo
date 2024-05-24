@@ -1,0 +1,75 @@
+from flask import Flask, request, jsonify
+from flask_sqlalchemy import SQLAlchemy
+
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///diet.db'
+db = SQLAlchemy(app)
+
+class Meal(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.String(255))
+    date_time = db.Column(db.DateTime, nullable=False)
+    in_diet = db.Column(db.Boolean, default=True)
+
+@app.route('/meals', methods=['POST'])
+def create_meal():
+    data = request.json
+    new_meal = Meal(
+        name=data['name'],
+        description=data['description'],
+        date_time=data['date_time'],
+        in_diet=data['in_diet']
+    )
+    db.session.add(new_meal)
+    db.session.commit()
+    return jsonify({'message': 'Meal created successfully'}), 201
+
+@app.route('/meals/<int:meal_id>', methods=['PUT'])
+def update_meal(meal_id):
+    meal = Meal.query.get_or_404(meal_id)
+    data = request.json
+    meal.name = data.get('name', meal.name)
+    meal.description = data.get('description', meal.description)
+    meal.date_time = data.get('date_time', meal.date_time)
+    meal.in_diet = data.get('in_diet', meal.in_diet)
+    db.session.commit()
+    return jsonify({'message': 'Meal updated successfully'})
+
+@app.route('/meals/<int:meal_id>', methods=['DELETE'])
+def delete_meal(meal_id):
+    meal = Meal.query.get_or_404(meal_id)
+    db.session.delete(meal)
+    db.session.commit()
+    return jsonify({'message': 'Meal deleted successfully'})
+
+@app.route('/meals/<int:meal_id>', methods=['GET'])
+def get_meal(meal_id):
+    meal = Meal.query.get_or_404(meal_id)
+    meal_data = {
+        'id': meal.id,
+        'name': meal.name,
+        'description': meal.description,
+        'date_time': meal.date_time,
+        'in_diet': meal.in_diet
+    }
+    return jsonify(meal_data)
+
+@app.route('/meals', methods=['GET'])
+def get_all_meals():
+    meals = Meal.query.all()
+    meal_list = []
+    for meal in meals:
+        meal_data = {
+            'id': meal.id,
+            'name': meal.name,
+            'description': meal.description,
+            'date_time': meal.date_time,
+            'in_diet': meal.in_diet
+        }
+        meal_list.append(meal_data)
+    return jsonify(meal_list)
+
+if __name__ == '__main__':
+    db.create_all()
+    app.run(debug=True)
